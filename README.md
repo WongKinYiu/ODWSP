@@ -65,16 +65,16 @@ Latency-Budget-Aware Deployment Across 17 Pretrained Detectors (`0` Weight Retra
 
 | Deployed Model / Budget $\beta$ | Ext. NMS | PyTorch $B{=}1$ (ms) | TensorRT $B{=}1$ (ms) | 17-Model AP<sup>val</sup> | 17-Model mAP<sup>COCO-O</sup> |
 | :-- | :-: | :-: | :-: | :-: | :-: |
-| Official (`1.00x`, 0\%) | No | 8.07 | 2.22 | 53.78% | 33.83% |
+| Official (`1.00x`, $\beta=0\%$) | No | 8.07 | 2.22 | 53.78% | 33.83% |
 | **IR-ODWSP** (`1.00x` Folded) | **No** | **8.57** | **2.25** | **53.84%** | **33.88%** |
 | Official TTA (`0`-Post) | No | 55.10 | 15.72 | 16.76% | 15.38% |
 | Official TTA (NMS) | Yes | 57.30 | 19.03 | 54.98% | 35.77% |
-| **IR-ODWSP** (Contraction, -10\%) | **No** | **7.05** | **1.78** | **51.62%** | **33.48%** |
-| **IR-ODWSP-Dyn** (+10\%) | **No** | **9.26** | **2.29** | **54.08%** | **33.94%** |
-| **IR-ODWSP-Dyn** (+50\%) | **No** | **15.20** | **3.03** | **54.68%** | **34.27%** |
-| **IR-ODWSP-SG** (+10\%) | **No** | **8.97** | **2.29** | **54.04%** | **33.94%** |
-| **IR-ODWSP-SG** (+100\%) | **No** | **12.69** | **3.91** | **54.83%** | **34.18%** |
-| **IR-ODWSP-Auto** (+100\%) | **No** | **12.69** | **3.74** | **54.83%** | **34.18%** |
+| **IR-ODWSP** (Contraction, $\beta \le -10\%$) | **No** | **7.05** | **1.78** | **51.62%** | **33.48%** |
+| **IR-ODWSP-Dyn** ($\beta \le +10\%$) | **No** | **9.26** | **2.29** | **54.08%** | **33.94%** |
+| **IR-ODWSP-Dyn** ($\beta \le +50\%$) | **No** | **15.20** | **3.03** | **54.68%** | **34.27%** |
+| **IR-ODWSP-SG** ($\beta \le +10\%$) | **No** | **8.97** | **2.29** | **54.04%** | **33.94%** |
+| **IR-ODWSP-SG** ($\beta \le +100\%$) | **No** | **12.69** | **3.91** | **54.83%** | **34.18%** |
+| **IR-ODWSP-Auto** ($\beta \le +100\%$) | **No** | **12.69** | **3.74** | **54.83%** | **34.18%** |
 | **IR-ODWSP+** (Unconstrained Best) | **No** | **291.6** | **208.8** | **55.91%** | **35.44%** |
 
 <details><summary> <b>Multi-Subspace Basin Packs & MM-FW-Ridge Contraction Bridges (v0.1.0) — Expand</b> </summary>
@@ -202,6 +202,26 @@ python detect.py --model yolo26s --weights ./yolo26s-odwsp.pt --source ./images 
   author={Wang, Chien-Yao},
   journal={arXiv preprint},
   year={2026}
+}
+```
+
+```bibtex
+@inproceedings{wang2024yolov9,
+  title={{YOLOv9}: Learning What You Want to Learn Using Programmable Gradient Information},
+  author={Wang, Chien-Yao and Yeh, I-Hau and Liao, Hong-Yuan Mark},
+  booktitle={European Conference on Computer Vision (ECCV)},
+  pages={1--21},
+  year={2024}
+}
+```
+
+```bibtex
+@inproceedings{wang2023yolov7,
+  title={{YOLOv7}: Trainable Bag-of-Freebies Sets New State-of-the-Art for Real-Time Object Detectors},
+  author={Wang, Chien-Yao and Bochkovskiy, Alexey and Liao, Hong-Yuan Mark},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages={7464--7475},
+  year={2023}
 }
 ```
 
