@@ -39,6 +39,8 @@ MS COCO & Zero-Shot COCO-O (`1.00x` Zero-Overhead Weight-Space Programming, `0%`
 | [**RF-DETR-M-ODWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.0/rfdetr-m-odwsp.pt) | 576 | **54.9%** | **73.6%** | **59.4%** | **36.2%** | **32.7%** | **33.69M** | **78.6G** |
 | [**RF-DETR-L-ODWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.0/rfdetr-l-odwsp.pt) | 704 | **56.6%** | **75.1%** | **61.4%** | **39.1%** | **32.4%** | **33.93M** | **125.1G** |
 
+</details>
+
 <details><summary> <b>Cross-Basin Symmetry-Aligned Checkpoints (9 O365 + COCO Models) — Expand</b> </summary>
 
 | Model | Test Size | AP<sup>val</sup> | AP<sub>50</sub><sup>val</sup> | AP<sub>75</sub><sup>val</sup> | AP<sub>S</sub><sup>val</sup> | mAP<sup>COCO-O</sup> |
