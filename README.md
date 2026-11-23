@@ -133,14 +133,21 @@ python tests/test_odwsp.py -v
 [`rfdetr-n-odwsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.0/rfdetr-n-odwsp.pt) [`rfdetr-s-odwsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.0/rfdetr-s-odwsp.pt) [`rfdetr-m-odwsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.0/rfdetr-m-odwsp.pt) [`rfdetr-l-odwsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.0/rfdetr-l-odwsp.pt)
 
 ``` shell
-# evaluate YOLO26-S IR-ODWSP on MS COCO val2017 and zero-shot COCO-O
+# 1) 1.00x zero-overhead IR-ODWSP (--budget 0%, 0% extra params, 0% extra FLOPs)
 python val.py --model yolo26s --weights ./yolo26s-odwsp.pt --coco-root /coco --coco-o-root /coco_o --device 0 --save-json ./runs/val/yolo26s_odwsp.json
 
-# evaluate RF-DETR-M IR-ODWSP
+# evaluate RF-DETR-M & EdgeCrafter-X (O365->COCO) at 1.00x
 python val.py --model rfdetr_m --weights ./rfdetr-m-odwsp.pt --coco-root /coco --device 0
-
-# evaluate EdgeCrafter-X (O365->COCO) IR-ODWSP (requires official EdgeCrafter repo path)
 python val.py --model ecdet_o365coco_x --weights ./ecdet-o365coco-x-odwsp.pt --edgecrafter-root ./EdgeCrafter --coco-root /coco --device 0
+
+# 2) Negative latency budget (e.g., --budget -10% or -50% MM-FW-Ridge contraction, 0 external NMS)
+python val.py --model yolo26s --budget -10% --basins ./yolo26s-odwsp-basins.pt --bridges ./odwsp-contraction-bridges-all17.tar.gz --coco-root /coco --device 0
+
+# 3) Positive latency budget (e.g., --budget +10%, +50%, +100% with --paradigm {auto, dyn, sg})
+python val.py --model yolo26s --budget +50% --paradigm auto --basins ./yolo26s-odwsp-basins.pt --coco-root /coco --device 0
+
+# 4) Unconstrained accuracy ceiling (--budget full, IR-ODWSP+)
+python val.py --model yolo26s --budget full --basins ./yolo26s-odwsp-basins.pt --coco-root /coco --device 0
 ```
 
 You will get the results (example for `yolo26s-odwsp.pt` on MS COCO `val2017`):
@@ -164,19 +171,33 @@ You will get the results (example for `yolo26s-odwsp.pt` on MS COCO `val2017`):
 </div>
 
 ``` shell
-# run Algorithm 1 (IR-ODWSP): exact function-preserving lift (E), winner-exclusive normal equations, and re-collapse (C)
-python calibrate.py --eta-head 0.20 --lam-reg 2800.0 --pca-rank 64 --device 0 --out ./runs/calibrate/collapsed_readout.pt
+# 1) End-to-end zero-gradient detector WSP calibration on COCO-format images (Algorithm 1: E -> Solve -> C)
+python calibrate.py --mode detector --model yolo26s --pretrained ./yolo26s-raw-statedict.pt --coco-root /coco --split train2017 --max-images 2400 --device 0 --out ./runs/calibrate/yolo26s-odwsp.pt
+
+# 2) Closed-form MM-FW-Ridge subgraph bridge calibration for negative budgets (beta < 0%)
+python calibrate.py --mode bridge --lam-rel 0.015 --moment-gain 1.85 --device 0 --out ./runs/calibrate/mm_fw_bridge.pt
+
+# 3) Standalone readout calibration & exact IEEE-754 FP32 collapse verification
+python calibrate.py --mode readout --eta-head 0.20 --lam-reg 2800.0 --pca-rank 64 --device 0 --out ./runs/calibrate/collapsed_readout.pt
 ```
 
 
-## Deployment (CUDA Graph & TensorRT FP16)
+## Deployment (Latency-Budget Continuum, CUDA Graph & TensorRT FP16)
 
 ``` shell
-# benchmark PyTorch + static CUDAGraph latency (B=1)
-python deploy.py --model yolo26s --weights ./yolo26s-odwsp.pt --batch-size 1 --fp16 --cudagraph --benchmark --device 0
+# inspect all 22 bidirectional budget tiers (-100% to +100% & full) for any model
+python deploy.py --model yolo26s --paradigm auto --list-budgets
 
-# export constant-shape ONNX and compile local Strongly-Typed FP16 TensorRT engine
-python deploy.py --model yolo26s --weights ./yolo26s-odwsp.pt --batch-size 1 --fp16 --export-trt ./runs/trt/yolo26s_fp16.plan --device 0
+# benchmark 1.00x (--budget 0%), negative (--budget -10%), or positive (--budget +50%) inside a static CUDAGraph
+python deploy.py --model yolo26s --weights ./yolo26s-odwsp.pt --batch-size 1 --fp16 --cudagraph --benchmark --device 0
+python deploy.py --model yolo26s --budget -10% --basins ./yolo26s-odwsp-basins.pt --bridges ./odwsp-contraction-bridges-all17.tar.gz --batch-size 1 --fp16 --cudagraph --benchmark --device 0
+python deploy.py --model yolo26s --budget +50% --paradigm auto --basins ./yolo26s-odwsp-basins.pt --batch-size 1 --fp16 --cudagraph --benchmark --device 0
+
+# solve g*(beta) live on your own target GPU (profiles T_0 and T(g) directly on your hardware)
+python deploy.py --model yolo26s --budget +30% --paradigm auto --basins ./yolo26s-odwsp-basins.pt --solve-on-gpu --fp16 --cudagraph --device 0
+
+# export constant-shape ONNX and compile local Strongly-Typed FP16 TensorRT engine at any budget
+python deploy.py --model yolo26s --budget +50% --paradigm sg --basins ./yolo26s-odwsp-basins.pt --batch-size 1 --fp16 --export-trt ./runs/trt/yolo26s_pos50_fp16.plan --device 0
 ```
 
 
@@ -189,8 +210,12 @@ python deploy.py --model yolo26s --weights ./yolo26s-odwsp.pt --batch-size 1 --f
 </div>
 
 ``` shell
-# run visual detection inference on images
-python detect.py --model yolo26s --weights ./yolo26s-odwsp.pt --source ./images --conf 0.25 --device 0 --output ./runs/detect
+# 1.00x zero-overhead visual detection inference
+python detect.py --model yolo26s --weights ./yolo26s-odwsp.pt --source ./images --conf 0.25 --device 0 --output ./runs/detect/1x
+
+# multi-budget visual inference (e.g., --budget -30%, +50%, or full)
+python detect.py --model yolo26s --budget -30% --basins ./yolo26s-odwsp-basins.pt --bridges ./odwsp-contraction-bridges-all17.tar.gz --source ./images --conf 0.25 --device 0 --output ./runs/detect/neg30
+python detect.py --model yolo26s --budget +50% --paradigm auto --basins ./yolo26s-odwsp-basins.pt --source ./images --conf 0.25 --device 0 --output ./runs/detect/pos50
 ```
 
 
@@ -202,6 +227,26 @@ python detect.py --model yolo26s --weights ./yolo26s-odwsp.pt --source ./images 
   author={Wang, Chien-Yao},
   journal={arXiv preprint},
   year={2026}
+}
+```
+
+```bibtex
+@inproceedings{wang2024yolov9,
+  title={{YOLOv9}: Learning What You Want to Learn Using Programmable Gradient Information},
+  author={Wang, Chien-Yao and Yeh, I-Hau and Liao, Hong-Yuan Mark},
+  booktitle={European Conference on Computer Vision (ECCV)},
+  pages={1--21},
+  year={2024}
+}
+```
+
+```bibtex
+@inproceedings{wang2023yolov7,
+  title={{YOLOv7}: Trainable Bag-of-Freebies Sets New State-of-the-Art for Real-Time Object Detectors},
+  author={Wang, Chien-Yao and Bochkovskiy, Alexey and Liao, Hong-Yuan Mark},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages={7464--7475},
+  year={2023}
 }
 ```
 

@@ -23,12 +23,15 @@ from odwsp import (
     ExpandedBoxAffineLinear,
     ExpandedDCTConv2d,
     ExpandedPCAProcrustesLinear,
+    PAPER_MODELS,
     SufficientStatsAccumulator,
     build_whitening_projector_from_covariance,
     enforce_no_gradients,
     fit_mm_fw_ridge_bridge,
     fuse_conv_and_bn_tensors,
     max_ieee_fp32_diff,
+    parse_budget_spec,
+    resolve_budget_config,
     safe_load_checkpoint,
     solve_lifted_ir_odwsp_readout,
     solve_stiefel_procrustes,
@@ -128,6 +131,19 @@ class TestODWSP(unittest.TestCase):
             torch.save({"version": "0.1.0", "state_dict": {"w": torch.randn(4, 4)}}, ckpt)
             loaded = safe_load_checkpoint(ckpt)
             self.assertEqual(loaded["version"], "0.1.0")
+
+    def test_multi_budget_continuum_resolution(self) -> None:
+        self.assertEqual(parse_budget_spec("0%")[0], "zero")
+        self.assertEqual(parse_budget_spec("-25%")[2], "-30%")
+        self.assertEqual(parse_budget_spec("+35%")[2], "+30%")
+        self.assertEqual(parse_budget_spec("full")[0], "unconstrained")
+
+        for mkey in PAPER_MODELS:
+            for b in ("-100%", "-50%", "-10%", "0%", "+10%", "+50%", "+100%", "full"):
+                for par in ("auto", "dyn", "sg"):
+                    cfg = resolve_budget_config(mkey, budget=b, paradigm=par, batch_size=1)
+                    self.assertEqual(cfg["model_key"], mkey)
+                    self.assertIn("cand_id", cfg)
 
 
 if __name__ == "__main__":

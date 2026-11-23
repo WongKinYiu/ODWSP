@@ -8,21 +8,32 @@ import torch
 _GUARD_INSTALLED = False
 
 
-def _blocked_backward(*args, **kwargs):
-    raise RuntimeError(
-        "Autograd / backpropagation is strictly prohibited in IR-ODWSP: "
-        "all weight edits must be 100% gradient-free."
-    )
+_MSG = (
+    "Autograd / backpropagation is strictly prohibited in IR-ODWSP: "
+    "all weight edits must be 100% gradient-free."
+)
+
+
+def _blocked_tensor_backward(*args, **kwargs):
+    raise RuntimeError(_MSG)
+
+
+def _blocked_autograd_backward(*args, **kwargs):
+    raise RuntimeError(_MSG)
+
+
+def _blocked_autograd_grad(*args, **kwargs):
+    raise RuntimeError(_MSG)
 
 
 def enforce_no_gradients() -> None:
-    """Globally disables autograd and installs runtime traps on backward/grad."""
+    """Globally disables autograd and installs distinct runtime traps on backward/grad."""
     global _GUARD_INSTALLED
     torch.set_grad_enabled(False)
     if not _GUARD_INSTALLED:
-        torch.Tensor.backward = _blocked_backward  # type: ignore[assignment]
-        torch.autograd.backward = _blocked_backward  # type: ignore[assignment]
-        torch.autograd.grad = _blocked_backward  # type: ignore[assignment]
+        torch.Tensor.backward = _blocked_tensor_backward  # type: ignore[assignment]
+        torch.autograd.backward = _blocked_autograd_backward  # type: ignore[assignment]
+        torch.autograd.grad = _blocked_autograd_grad  # type: ignore[assignment]
         _GUARD_INSTALLED = True
 
 

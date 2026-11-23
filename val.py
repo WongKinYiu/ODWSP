@@ -2,8 +2,20 @@
 """
 MS COCO val2017 & Zero-Shot COCO-O Evaluation CLI (`val.py`).
 
-Example:
-  python val.py --model yolo26s --weights ./yolo26s-odwsp.pt --coco-root ./coco --device 0
+Supports `1.00x` zero-overhead (`--budget 0%`) as well as negative (`-100%..-10%`),
+positive (`+10%..+100%`), and unconstrained (`full`) WSP latency budgets (`0` external NMS).
+
+Examples:
+  # 1.00x Zero-Overhead IR-ODWSP
+  python val.py --model yolo26s --weights ./yolo26s-odwsp.pt --coco-root /coco --device 0
+
+  # Negative Budget (-10% Contraction)
+  python val.py --model yolo26s --budget -10% --basins ./yolo26s-odwsp-basins.pt \
+      --bridges ./odwsp-contraction-bridges-all17.tar.gz --coco-root /coco --device 0
+
+  # Positive Budget (+50% Dynamic / Static-Graph / Unified)
+  python val.py --model yolo26s --budget +50% --paradigm auto --basins ./yolo26s-odwsp-basins.pt \
+      --coco-root /coco --device 0
 """
 
 from __future__ import annotations
@@ -16,7 +28,8 @@ from typing import Any
 import numpy as np
 import torch
 
-from odwsp import COCO80_TO_91, enforce_no_gradients, load_odwsp_detector
+from odwsp import COCO80_TO_91, enforce_no_gradients, load_continuum_detector
+from odwsp.continuum import normalize_budget_cli_argv
 
 
 def evaluate_coco_split(
@@ -80,9 +93,16 @@ def evaluate_coco_split(
 
 def main() -> None:
     enforce_no_gradients()
-    ap = argparse.ArgumentParser(description="IR-ODWSP MS COCO & Zero-Shot COCO-O Evaluation")
+    ap = argparse.ArgumentParser(description="IR-ODWSP Multi-Budget MS COCO & Zero-Shot COCO-O Evaluation")
     ap.add_argument("--model", type=str, required=True, help="Model key (e.g., yolo26s, ecdet_s, rfdetr_m)")
-    ap.add_argument("--weights", type=Path, required=True, help="Path to v0.1.0 ODWSP checkpoint (.pt)")
+    ap.add_argument("--budget", type=str, default="0%", help="Latency budget beta (e.g., -50%%, -10%%, 0%%, +10%%, +50%%, +100%%, full)")
+    ap.add_argument("--paradigm", type=str, default="auto", choices=["auto", "dyn", "sg"], help="Positive-budget WSP paradigm")
+    ap.add_argument("--batch-size", type=int, default=1, choices=[1, 8], help="Target deployment batch regime (1 or 8)")
+    ap.add_argument("--weights", type=Path, default=None, help="Path to 1.00x ODWSP checkpoint (.pt) for --budget 0%%")
+    ap.add_argument("--basins", type=Path, default=None, help="Path to multi-subspace basin pack (*-odwsp-basins.pt)")
+    ap.add_argument("--bridges", type=Path, default=None, help="Path to contraction bridges (.pt or odwsp-contraction-bridges-all17.tar.gz)")
+    ap.add_argument("--deploy-ckpt", type=Path, default=None, help="Optional pre-fused deploy archive/checkpoint")
+    ap.add_argument("--cand-id", type=str, default=None, help="Optional explicit candidate graph ID override")
     ap.add_argument("--coco-root", type=Path, default=None, help="Path to MS COCO root (containing val2017/ & annotations/)")
     ap.add_argument("--coco-o-root", type=Path, default=None, help="Optional path to COCO-O root (6 natural shift domains)")
     ap.add_argument("--edgecrafter-root", type=Path, default=None, help="Path to EdgeCrafter repo (required for ecdet_*)")
@@ -90,12 +110,19 @@ def main() -> None:
     ap.add_argument("--conf", type=float, default=0.001, help="Confidence threshold for COCO evaluation")
     ap.add_argument("--device", type=str, default="0", help="CUDA device index (e.g., 0) or 'cpu'")
     ap.add_argument("--save-json", type=Path, default=None, help="Optional output path for JSON metrics summary")
-    args = ap.parse_args()
+    args = ap.parse_args(normalize_budget_cli_argv())
 
     dev_str = f"cuda:{args.device}" if args.device.isdigit() and torch.cuda.is_available() else args.device
-    det = load_odwsp_detector(
+    det = load_continuum_detector(
         model_key=args.model,
+        budget=args.budget,
+        paradigm=args.paradigm,
+        batch_size=args.batch_size,
         weights_path=args.weights,
+        basins_path=args.basins,
+        bridges_path=args.bridges,
+        deploy_ckpt_path=args.deploy_ckpt,
+        cand_override=args.cand_id,
         device=dev_str,
         edgecrafter_root=args.edgecrafter_root,
         expected_sha256=args.sha256,
@@ -103,9 +130,12 @@ def main() -> None:
 
     results: dict[str, Any] = {
         "model": det.spec.model_key,
-        "weights": args.weights.name,
+        "budget": args.budget,
+        "paradigm": args.paradigm,
         "checkpoint_metadata": det.metadata,
     }
+    if hasattr(det, "budget_info"):
+        results["resolved_budget"] = det.budget_info
 
     if args.coco_root is not None:
         coco_root = args.coco_root.resolve()

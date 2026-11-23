@@ -3,6 +3,14 @@ IR-ODWSP: Inverse-Reparameterized Weight-Space Programming for Object Detectors.
 """
 
 from .contraction import fit_mm_fw_ridge_bridge, fuse_conv_and_bn_tensors
+from .continuum import (
+    LoadedContinuumDetector,
+    get_continuum_table,
+    load_continuum_detector,
+    parse_budget_spec,
+    resolve_budget_config,
+    solve_budget_on_target_gpu,
+)
 from .ir_operators import (
     ExpandedAdaBN2d,
     ExpandedAdaLayerNorm,
@@ -53,6 +61,7 @@ __all__ = [
     "ExpandedDCTConv2d",
     "ExpandedPCAProcrustesLinear",
     "IRODWSPConfig",
+    "LoadedContinuumDetector",
     "LoadedDetector",
     "PAPER_MODELS",
     "SufficientStatsAccumulator",
@@ -69,10 +78,15 @@ __all__ = [
     "extract_orthonormal_auxiliary_basis",
     "fit_mm_fw_ridge_bridge",
     "fuse_conv_and_bn_tensors",
+    "get_continuum_table",
+    "load_continuum_detector",
     "load_odwsp_detector",
     "max_ieee_fp32_diff",
     "pairwise_box_iou",
+    "parse_budget_spec",
+    "resolve_budget_config",
     "safe_load_checkpoint",
+    "solve_budget_on_target_gpu",
     "solve_lifted_ir_odwsp_readout",
     "solve_stiefel_procrustes",
 ]

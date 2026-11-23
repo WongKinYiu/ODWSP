@@ -43,6 +43,62 @@ COCO80_NAMES = [
 
 COCO91_TO_NAME = {cid: nm for cid, nm in zip(COCO80_TO_91, COCO80_NAMES)}
 
+YOLO26_BASE_CFG: dict[str, Any] = {
+    "nc": 80,
+    "end2end": True,
+    "reg_max": 1,
+    "scales": {
+        "n": [0.5, 0.25, 1024],
+        "s": [0.5, 0.5, 1024],
+        "m": [0.5, 1.0, 512],
+        "l": [1.0, 1.0, 512],
+        "x": [1.0, 1.5, 512],
+    },
+    "scale": "s",
+    "channels": 3,
+    "backbone": [
+        [-1, 1, "Conv", [64, 3, 2]],
+        [-1, 1, "Conv", [128, 3, 2]],
+        [-1, 2, "C3k2", [256, False, 0.25]],
+        [-1, 1, "Conv", [256, 3, 2]],
+        [-1, 2, "C3k2", [512, False, 0.25]],
+        [-1, 1, "Conv", [512, 3, 2]],
+        [-1, 2, "C3k2", [512, True]],
+        [-1, 1, "Conv", [1024, 3, 2]],
+        [-1, 2, "C3k2", [1024, True]],
+        [-1, 1, "SPPF", [1024, 5, 3, True]],
+        [-1, 2, "C2PSA", [1024]],
+    ],
+    "head": [
+        [-1, 1, "nn.Upsample", ["None", 2, "nearest"]],
+        [[-1, 6], 1, "Concat", [1]],
+        [-1, 2, "C3k2", [512, True]],
+        [-1, 1, "nn.Upsample", ["None", 2, "nearest"]],
+        [[-1, 4], 1, "Concat", [1]],
+        [-1, 2, "C3k2", [256, True]],
+        [-1, 1, "Conv", [256, 3, 2]],
+        [[-1, 13], 1, "Concat", [1]],
+        [-1, 2, "C3k2", [512, True]],
+        [-1, 1, "Conv", [512, 3, 2]],
+        [[-1, 10], 1, "Concat", [1]],
+        [-1, 1, "C3k2", [1024, True, 0.5, True]],
+        [[16, 19, 22], 1, "Detect", ["nc"]],
+    ],
+}
+
+
+def make_yolo26_arch_cfg(scale: str) -> dict[str, Any]:
+    cfg = copy.deepcopy(YOLO26_BASE_CFG)
+    cfg["scale"] = scale
+    return cfg
+
+
+def normalize_model_key(model_key: str) -> str:
+    key = model_key.strip().lower().replace("-", "_").replace("ecdet_o3652coco_", "ecdet_o365coco_")
+    if key not in PAPER_MODELS:
+        raise KeyError(f"Unknown model_key '{model_key}'. Supported: {sorted(PAPER_MODELS)}")
+    return key
+
 
 @dataclass(frozen=True)
 class DetectorSpec:
@@ -255,62 +311,47 @@ class LoadedDetector:
         return dets
 
 
-def load_odwsp_detector(
-    model_key: str,
-    weights_path: Path,
-    device: torch.device | str = "cuda:0",
+def instantiate_subspace_model(
+    spec: DetectorSpec,
+    state_dict: dict[str, torch.Tensor],
+    device: torch.device,
     edgecrafter_root: Path | None = None,
-    expected_sha256: str | None = None,
-    use_collision_gate: bool = True,
-) -> LoadedDetector:
-    """
-    Safely loads any `v0.1.0` IR-ODWSP checkpoint (`weights_only=True`) across YOLO26,
-    EdgeCrafter, and RF-DETR without executing untrusted pickle classes.
-    """
+    arch_yaml: dict[str, Any] | None = None,
+) -> tuple[nn.Module, Any]:
+    """Instantiates a bare detector architecture and loads `state_dict` strictly with zero untrusted pickle execution."""
     enforce_no_gradients()
-    key = model_key.strip().lower().replace("-", "_").replace("ecdet_o3652coco_", "ecdet_o365coco_")
-    if key not in PAPER_MODELS:
-        raise KeyError(f"Unknown model_key '{model_key}'. Supported: {sorted(PAPER_MODELS)}")
-    spec = PAPER_MODELS[key]
-    dev = torch.device(device)
-
-    pkg = safe_load_checkpoint(weights_path, map_location="cpu", expected_sha256=expected_sha256)
-    sd: dict[str, torch.Tensor] = pkg["state_dict"] if "state_dict" in pkg else pkg["model"]
-    meta = {k: v for k, v in pkg.items() if k not in ("state_dict", "model")}
-
     if spec.family == "yolo26":
         from ultralytics.nn.tasks import DetectionModel
 
-        arch_yaml = pkg.get("arch_yaml")
-        if not isinstance(arch_yaml, dict):
-            arch_yaml = f"yolo26{spec.scale}.yaml"
-        base_m = DetectionModel(cfg=copy.deepcopy(arch_yaml), ch=3, nc=80, verbose=False)
-        base_m.load_state_dict(sd, strict=True)
+        cfg_dict = copy.deepcopy(arch_yaml) if isinstance(arch_yaml, dict) else make_yolo26_arch_cfg(spec.scale)
+        base_m = DetectionModel(cfg=cfg_dict, ch=3, nc=80, verbose=False)
+        missing, _ = base_m.load_state_dict(state_dict, strict=False)
+        if missing:
+            raise RuntimeError(f"Missing YOLO26 state_dict keys ({len(missing)}): {missing[:5]}")
         base_m.end2end = True
-        base_m.eval().requires_grad_(False)
-        if use_collision_gate and isinstance(pkg.get("ingraph_cfg"), dict):
-            model: nn.Module = YOLOGated1xModule(base_m, pkg["ingraph_cfg"]).to(dev).eval()
-        else:
-            model = base_m.to(dev).eval()
-        return LoadedDetector(spec=spec, model=model, postprocessor=None, device=dev, metadata=meta)
+        base_m.model[-1].end2end = True
+        base_m.eval().requires_grad_(False).to(device)
+        return base_m, None
 
     if spec.family == "rfdetr":
         from rfdetr import RFDETRLarge, RFDETRMedium, RFDETRNano, RFDETRSmall
 
         cls_map = {"n": RFDETRNano, "s": RFDETRSmall, "m": RFDETRMedium, "l": RFDETRLarge}
-        n_cls = int(sd["class_embed.weight"].shape[0] - 1) if "class_embed.weight" in sd else 90
-        wrapper = cls_map[spec.scale](pretrain_weights=None, num_classes=n_cls)
+        n_cls = int(state_dict["class_embed.weight"].shape[0] - 1) if "class_embed.weight" in state_dict else 90
+        wrapper = cls_map[spec.scale](pretrain_weights=None, num_classes=n_cls, device=str(device))
         model = wrapper.model.model
-        model.load_state_dict(sd, strict=True)
-        model.eval().requires_grad_(False).to(dev)
-        post = wrapper.model.postprocessors["bbox"].to(dev).eval()
-        return LoadedDetector(spec=spec, model=model, postprocessor=post, device=dev, metadata=meta)
+        model.load_state_dict(state_dict, strict=True)
+        model.eval().requires_grad_(False).to(device)
+        raw_post = getattr(wrapper.model, "postprocess", None)
+        if raw_post is None and hasattr(wrapper.model, "postprocessors"):
+            raw_post = wrapper.model.postprocessors["bbox"]
+        post = raw_post.to(device).eval() if isinstance(raw_post, nn.Module) else raw_post
+        return model, post
 
-    # EdgeCrafter (ECDet): requires official Intellindust EdgeCrafter repo path (`--edgecrafter-root`)
     ec_root = edgecrafter_root
     if ec_root is None:
         raise ValueError(
-            "EdgeCrafter models require `--edgecrafter-root /path/to/EdgeCrafter/ecdetseg` "
+            "EdgeCrafter models require `--edgecrafter-root /path/to/EdgeCrafter` "
             "(clone from https://github.com/Intellindust-AI-Lab/EdgeCrafter)."
         )
     ec_resolved = Path(ec_root).resolve()
@@ -325,12 +366,64 @@ def load_odwsp_detector(
     if _ec_load_config.__defaults__ and isinstance(_ec_load_config.__defaults__[0], dict):
         _ec_load_config.__defaults__[0].clear()
     assert spec.ecdet_cfg_rel is not None
-    cfg_path = ec_resolved / spec.ecdet_cfg_rel
-    cfg = YAMLConfig(str(cfg_path))
+    cfg = YAMLConfig(str(ec_resolved / spec.ecdet_cfg_rel))
     cfg.yaml_cfg["ViTAdapter"]["skip_load_backbone"] = True
     model = cfg.model
-    model.load_state_dict(sd, strict=True)
+    if any("conv_bn_fused" in k for k in state_dict):
+        for sub in list(model.modules()):
+            cls_name = type(sub).__name__
+            if cls_name == "ConvNormLayer_fuse" and hasattr(sub, "norm"):
+                sub.convert_to_deploy()
+            elif cls_name in ("VGGBlock", "RepVggBlock") and hasattr(sub, "conv1"):
+                sub.convert_to_deploy()
+        for name, sub in list(model.named_modules()):
+            if (
+                isinstance(sub, nn.Sequential)
+                and len(sub) == 2
+                and isinstance(sub[0], nn.Conv2d)
+                and isinstance(sub[1], nn.BatchNorm2d)
+                and f"{name}.1.running_mean" not in state_dict
+            ):
+                c0 = sub[0]
+                sub[0] = nn.Conv2d(c0.in_channels, c0.out_channels, c0.kernel_size, c0.stride, c0.padding, c0.dilation, c0.groups, bias=True)
+                sub[1] = nn.Identity()
+    model.load_state_dict(state_dict, strict=True)
     post = cfg.postprocessor
-    model.eval().requires_grad_(False).to(dev)
-    post.eval().to(dev)
+    model.eval().requires_grad_(False).to(device)
+    post.eval().to(device)
+    return model, post
+
+
+def load_odwsp_detector(
+    model_key: str,
+    weights_path: Path,
+    device: torch.device | str = "cuda:0",
+    edgecrafter_root: Path | None = None,
+    expected_sha256: str | None = None,
+    use_collision_gate: bool = True,
+) -> LoadedDetector:
+    """
+    Safely loads any `v0.1.0` IR-ODWSP checkpoint (`weights_only=True`) across YOLO26,
+    EdgeCrafter, and RF-DETR without executing untrusted pickle classes.
+    """
+    enforce_no_gradients()
+    key = normalize_model_key(model_key)
+    spec = PAPER_MODELS[key]
+    dev = torch.device(device)
+
+    pkg = safe_load_checkpoint(weights_path, map_location="cpu", expected_sha256=expected_sha256)
+    sd: dict[str, torch.Tensor] = pkg["state_dict"] if "state_dict" in pkg else pkg["model"]
+    meta = {k: v for k, v in pkg.items() if k not in ("state_dict", "model", "arch_yaml")}
+
+    base_m, post = instantiate_subspace_model(
+        spec=spec,
+        state_dict=sd,
+        device=dev,
+        edgecrafter_root=edgecrafter_root,
+        arch_yaml=pkg.get("arch_yaml") if isinstance(pkg.get("arch_yaml"), dict) else None,
+    )
+    if spec.family == "yolo26" and use_collision_gate and isinstance(pkg.get("ingraph_cfg"), dict):
+        model: nn.Module = YOLOGated1xModule(base_m, pkg["ingraph_cfg"]).to(dev).eval()
+    else:
+        model = base_m
     return LoadedDetector(spec=spec, model=model, postprocessor=post, device=dev, metadata=meta)

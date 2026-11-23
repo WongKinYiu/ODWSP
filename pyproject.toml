@@ -22,3 +22,6 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["odwsp*"]
+
+[tool.setuptools.package-data]
+odwsp = ["*.json"]
