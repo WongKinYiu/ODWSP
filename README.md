@@ -205,26 +205,6 @@ python detect.py --model yolo26s --weights ./yolo26s-odwsp.pt --source ./images 
 }
 ```
 
-```bibtex
-@inproceedings{wang2024yolov9,
-  title={{YOLOv9}: Learning What You Want to Learn Using Programmable Gradient Information},
-  author={Wang, Chien-Yao and Yeh, I-Hau and Liao, Hong-Yuan Mark},
-  booktitle={European Conference on Computer Vision (ECCV)},
-  pages={1--21},
-  year={2024}
-}
-```
-
-```bibtex
-@inproceedings{wang2023yolov7,
-  title={{YOLOv7}: Trainable Bag-of-Freebies Sets New State-of-the-Art for Real-Time Object Detectors},
-  author={Wang, Chien-Yao and Bochkovskiy, Alexey and Liao, Hong-Yuan Mark},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-  pages={7464--7475},
-  year={2023}
-}
-```
-
 
 ## Acknowledgements
 
