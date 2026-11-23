@@ -17,6 +17,8 @@ Implementation of paper - [Reparameterizing Your Object Detectors for Weight Spa
 
 MS COCO & Zero-Shot COCO-O (`1.00x` Zero-Overhead Weight-Space Programming, `0%` Extra Params, `0%` Extra FLOPs)
 
+<details><summary> <b>Expand</b> </summary>
+    
 | Model | Test Size | AP<sup>val</sup> | AP<sub>50</sub><sup>val</sup> | AP<sub>75</sub><sup>val</sup> | AP<sub>S</sub><sup>val</sup> | mAP<sup>COCO-O</sup> | Param. | FLOPs |
 | :-- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
 | [**YOLO26-N-ODWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.0/yolo26n-odwsp.pt) | 640 | **40.2%** | **55.7%** | **43.6%** | **20.0%** | **18.4%** | **2.57M** | **6.1G** |
@@ -227,26 +229,6 @@ python detect.py --model yolo26s --budget +50% --paradigm auto --basins ./yolo26
   author={Wang, Chien-Yao},
   journal={arXiv preprint},
   year={2026}
-}
-```
-
-```bibtex
-@inproceedings{wang2024yolov9,
-  title={{YOLOv9}: Learning What You Want to Learn Using Programmable Gradient Information},
-  author={Wang, Chien-Yao and Yeh, I-Hau and Liao, Hong-Yuan Mark},
-  booktitle={European Conference on Computer Vision (ECCV)},
-  pages={1--21},
-  year={2024}
-}
-```
-
-```bibtex
-@inproceedings{wang2023yolov7,
-  title={{YOLOv7}: Trainable Bag-of-Freebies Sets New State-of-the-Art for Real-Time Object Detectors},
-  author={Wang, Chien-Yao and Bochkovskiy, Alexey and Liao, Hong-Yuan Mark},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-  pages={7464--7475},
-  year={2023}
 }
 ```
 
