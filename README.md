@@ -2,7 +2,7 @@
 
 Implementation of paper - [Reparameterizing Your Object Detectors for Weight Space Programming](https://github.com/WongKinYiu/ODWSP)
 
-[![arXiv](https://img.shields.io/badge/cs.CV-arXiv-B31B1B.svg)](https://arxiv.org/)
+[![arXiv](https://img.shields.io/badge/cs.CV-arXiv-B31B1B.svg)](https://arxiv.org/abs/2402.13616)
 [![Release](https://img.shields.io/github/v/release/WongKinYiu/ODWSP?color=blue)](https://github.com/WongKinYiu/ODWSP/releases/tag/v0.1.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
@@ -229,7 +229,7 @@ python detect.py --model yolo26s --budget +50% --paradigm auto --basins ./yolo26
 @article{wang2026odwsp,
   title={Reparameterizing Your Object Detectors for Weight Space Programming},
   author={Wang, Chien-Yao},
-  journal={arXiv preprint},
+  journal={arXiv preprint 2402.13616},
   year={2026}
 }
 ```
