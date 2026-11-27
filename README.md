@@ -1,9 +1,12 @@
 # ODWSP
 
-Implementation of paper - [Reparameterizing Your Object Detectors for Weight Space Programming](https://github.com/WongKinYiu/ODWSP)
+Implementation of papers in [ODWSP](https://github.com/WongKinYiu/ODWSP):
+* **Object Detection (`IR-ODWSP`, `v0.1.0`)** — [Reparameterizing Your Object Detectors for Weight Space Programming](https://arxiv.org/abs/2611.29882)
+* **Instance Segmentation (`IR-ISWSP`, added in `v0.1.1`)** — [Reparameterizing Your Instance Segmenter for Weight Space Programming](./ISWSP.md)
 
 [![arXiv](https://img.shields.io/badge/cs.CV-arXiv-B31B1B.svg)](https://arxiv.org/abs/2611.29882)
-[![Release](https://img.shields.io/github/v/release/WongKinYiu/ODWSP?color=blue)](https://github.com/WongKinYiu/ODWSP/releases/tag/v0.1.0)
+[![Release](https://img.shields.io/github/v/release/WongKinYiu/ODWSP?color=blue)](https://github.com/WongKinYiu/ODWSP/releases/tag/v0.1.1)
+[![v0.1.0](https://img.shields.io/badge/v0.1.0-ODWSP-informational.svg)](https://github.com/WongKinYiu/ODWSP/releases/tag/v0.1.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
 <div align="center">
@@ -123,8 +126,9 @@ cd ODWSP
 pip install -r requirements.txt
 pip install -e .
 
-# run zero-gradient & mathematical equivalence unit tests
+# run zero-gradient & mathematical equivalence unit tests (ODWSP + ISWSP)
 python tests/test_odwsp.py -v
+python tests/test_iswsp.py -v
 ```
 
 </details>
@@ -223,14 +227,104 @@ python detect.py --model yolo26s --budget +50% --paradigm auto --basins ./yolo26
 ```
 
 
+## Instance Segmentation — IR-ISWSP (`v0.1.1`)
+
+`v0.1.1` adds **IR-ISWSP** (*Reparameterizing Your Instance Segmenter for Weight Space Programming*) across **19 official pretrained instance segmenters** (`YOLO26-Seg`, `EdgeCrafter-Seg / ECSeg`, and `RF-DETR-Seg`) with `0` backpropagation, `0` external NMS / Mask-NMS, and full backward compatibility with all `v0.1.0` ODWSP APIs and checkpoints. See [`ISWSP.md`](./ISWSP.md) for the complete architecture, operator, and deployment guide.
+
+<div align="center">
+    <a href="./ISWSP.md">
+        <img src="./figure/iswsp_teaser.png" width="95%"/>
+    </a>
+</div>
+
+MS COCO `val2017` (`1.00x` Zero-Overhead Full-Matrix $\mathbf{W}_q$ IR-ISWSP, `0%` Extra Params, `0%` Extra FLOPs, `v0.1.1` Release)
+
+<details><summary> <b>Expand (19 Instance Segmenters — `v0.1.1` Weights)</b> </summary>
+
+| Model | Test Size | Mask AP<sup>val</sup> | Mask AP<sub>75</sub><sup>val</sup> | Mask AP<sub>S</sub><sup>val</sup> | Box AP<sup>val</sup> | `S2` Mask / Box | `IR-ISWSP+` Mask / Box | Param. |
+| :-- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| [**YOLO26-N-Seg-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/yolo26n-seg-iswsp.pt) | 640 | **33.98%** (+0.36) | **36.33%** | **14.54%** | 39.59% | 33.98 / 39.59 | **35.58 / 41.56** | **3.13M** |
+| [**YOLO26-S-Seg-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/yolo26s-seg-iswsp.pt) | 640 | **40.14%** (+0.49) | **43.27%** | **20.65%** | 47.22% | 40.14 / 47.22 | **41.25 / 48.98** | **11.51M** |
+| [**YOLO26-M-Seg-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/yolo26m-seg-iswsp.pt) | 640 | **44.21%** (+0.61) | **48.23%** | **26.09%** | 52.16% | 44.20 / 52.16 | **45.13 / 53.62** | **27.11M** |
+| [**YOLO26-L-Seg-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/yolo26l-seg-iswsp.pt) | 640 | **45.70%** (+0.63) | **49.84%** | **27.21%** | 54.27% | 45.70 / 54.27 | **46.53 / 55.58** | **31.52M** |
+| [**YOLO26-X-Seg-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/yolo26x-seg-iswsp.pt) | 640 | **47.34%** (+0.78) | **51.71%** | **30.59%** | 56.25% | 47.34 / **56.25** | **47.83 / 57.26** | **70.69M** |
+| [**ECSeg-S-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-s-iswsp.pt) | 640 | **43.10%** (+0.26) | **46.14%** | **23.54%** | 50.29% | **43.13 / 50.35** | **44.61 / 51.87** | **10.41M** |
+| [**ECSeg-M-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-m-iswsp.pt) | 640 | 45.06% (+0.00) | 48.12% | 26.01% | 52.61% | 45.05 / **52.67** | **46.63 / 54.19** | **20.36M** |
+| [**ECSeg-L-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-l-iswsp.pt) | 640 | **47.22%** (+0.21) | **50.70%** | **28.09%** | 55.10% | **47.22 / 55.14** | **48.63 / 56.47** | **33.90M** |
+| [**ECSeg-X-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-x-iswsp.pt) | 640 | **48.30%** (+0.02) | **51.95%** | 28.68% | 56.31% | **48.30** / 56.31 | **49.53 / 57.52** | **50.88M** |
+| [**ECSeg-O365-S-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-o365coco-s-iswsp.pt) | 640 | **43.88%** (+0.12) | **46.99%** | **25.05%** | 51.39% | **43.90 / 51.46** | **44.94 / 52.36** | **10.41M** |
+| [**ECSeg-O365-M-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-o365coco-m-iswsp.pt) | 640 | **46.82%** (+0.05) | **50.54%** | 27.71% | 54.83% | **46.84 / 54.86** | **47.73 / 55.62** | **20.36M** |
+| [**ECSeg-O365-L-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-o365coco-l-iswsp.pt) | 640 | **48.80%** (+0.06) | **52.94%** | 30.31% | 57.15% | **48.82 / 57.19** | **49.48 / 57.70** | **33.90M** |
+| [**ECSeg-O365-X-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-o365coco-x-iswsp.pt) | 640 | **49.65%** (+0.00) | 53.64% | 29.84% | 57.98% | **49.66 / 58.01** | **50.31 / 58.54** | **50.88M** |
+| [**RF-DETR-Seg-N-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-n-iswsp.pt) | 312 | **40.57%** (+0.16) | **42.69%** | **16.54%** | 49.31% | **40.63 / 49.36** | **41.84 / 50.67** | **33.58M** |
+| [**RF-DETR-Seg-S-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-s-iswsp.pt) | 384 | **43.14%** (+0.10) | **45.89%** | **21.25%** | 51.60% | **43.19 / 51.68** | **44.22 / 52.90** | **33.71M** |
+| [**RF-DETR-Seg-M-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-m-iswsp.pt) | 432 | **44.90%** (+0.10) | **48.08%** | **24.07%** | 53.56% | **44.95 / 53.65** | **46.05 / 54.94** | **35.69M** |
+| [**RF-DETR-Seg-L-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-l-iswsp.pt) | 504 | **46.32%** (+0.06) | **49.57%** | **27.05%** | 54.84% | **46.37 / 54.91** | **47.47 / 56.10** | **35.87M** |
+| [**RF-DETR-Seg-XL-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-xl-iswsp.pt) | 624 | **48.31%** (+0.02) | 52.10% | **29.80%** | 56.43% | **48.34 / 56.52** | **49.26 / 57.49** | **38.11M** |
+| [**RF-DETR-Seg-2XL-ISWSP**](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-2xl-iswsp.pt) | 768 | **49.61%** (+0.01) | **54.13%** | **32.29%** | 57.49% | **49.63 / 57.64** | **50.45 / 58.34** | **38.65M** |
+| **19-Model Mean** | — | **45.11%** (+0.21) | **48.57%** | **25.75%** | **53.07%** | **45.13 / 53.12** | **46.18 / 54.30** | **30.89M** |
+
+* **Multi-Task `S1` Synergy `1.00x` Checkpoints (`v0.1.1`)**: [`yolo26n-seg-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/yolo26n-seg-syn-s1-iswsp.pt) [`yolo26m-seg-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/yolo26m-seg-syn-s1-iswsp.pt) [`yolo26x-seg-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/yolo26x-seg-syn-s1-iswsp.pt) [`ecseg-m-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-m-syn-s1-iswsp.pt) [`ecseg-l-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-l-syn-s1-iswsp.pt) [`ecseg-x-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-x-syn-s1-iswsp.pt) [`ecseg-o365coco-s-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-o365coco-s-syn-s1-iswsp.pt) [`ecseg-o365coco-m-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-o365coco-m-syn-s1-iswsp.pt) [`ecseg-o365coco-l-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-o365coco-l-syn-s1-iswsp.pt) [`ecseg-o365coco-x-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/ecseg-o365coco-x-syn-s1-iswsp.pt) [`rfdetr-seg-n-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-n-syn-s1-iswsp.pt) [`rfdetr-seg-s-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-s-syn-s1-iswsp.pt) [`rfdetr-seg-m-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-m-syn-s1-iswsp.pt) [`rfdetr-seg-l-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-l-syn-s1-iswsp.pt) [`rfdetr-seg-xl-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-xl-syn-s1-iswsp.pt) [`rfdetr-seg-2xl-syn-s1-iswsp.pt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/rfdetr-seg-2xl-syn-s1-iswsp.pt)
+* **Cryptographic Checksums (`v0.1.1`)**: [`SHA256SUMS_v0.1.1.txt`](https://github.com/WongKinYiu/ODWSP/releases/download/v0.1.1/SHA256SUMS_v0.1.1.txt)
+
+</details>
+
+<br/>
+
+Bidirectional Latency-Budget Deployment Across 19 Instance Segmenters (`0` Weight Retraining, `0` External NMS / Mask-NMS)
+
+<div align="center">
+    <a href="./ISWSP.md">
+        <img src="./figure/iswsp_continuum.png" width="92%"/>
+    </a>
+</div>
+
+| Deployed Regime / Budget $\beta$ | Ext. NMS | PyTorch $B{=}1$ (ms) | TensorRT $B{=}1$ (ms) | 19-Model Mask AP<sup>val</sup> | 19-Model Box AP<sup>val</sup> |
+| :-- | :-: | :-: | :-: | :-: | :-: |
+| Official Stock (`1.00x`, $\beta=0\%$) | No | 11.57 | 1.77 | 44.895% | 53.074% |
+| **Multi-Task Contraction** ($\beta \le -10\%$) | **No** | **11.35** | **1.44** | **42.562%** | **51.026%** |
+| **IR-ISWSP** (`1.00x` Full-Matrix $\mathbf{W}_q$) | **No** | **11.57** | **1.77** | **45.107%** (+0.212) | 53.072% |
+| **IR-ISWSP-Syn** (`S2` Box $\leftrightarrow$ Mask, `1x`) | **No** | **12.55** | **1.80** | **45.125%** (+0.231) | **53.117%** (+0.044) |
+| **IR-ISWSP-Static** ($\beta \le +10\%$) | **No** | **11.81** | **1.78** | **45.204%** (+0.309) | **53.096%** (+0.023) |
+| **IR-ISWSP-Static** ($\beta \le +50\%$) | **No** | **13.18** | **2.26** | **45.627%** (+0.732) | **53.517%** (+0.443) |
+| **IR-ISWSP-Static** ($\beta \le +100\%$) | **No** | **13.81** | **2.53** | **45.746%** (+0.851) | **53.615%** (+0.541) |
+| **Dual-Geom RoI `S3`** ($K_{\text{top}}=300$) | **No** | **13.81** | **3.59** | **45.744%** (+0.849) | **53.592%** (+0.518) |
+| **IR-ISWSP+** (Unconstrained Best) | **No** | — | **10.82** | **46.183%** (+1.288) | **54.300%** (+1.227) |
+
+``` shell
+# 1) Evaluate 1.00x IR-ISWSP (Mask AP + Box AP) on MS COCO val2017
+python val_iswsp.py --model yolo26x_seg --weights ./yolo26x-seg-iswsp.pt --coco-root /coco --device 0
+python val_iswsp.py --model rfdetr_seg_2xl --weights ./rfdetr-seg-2xl-iswsp.pt --synergy-s2 --coco-root /coco --device 0
+
+# 2) Visual instance segmentation inference
+python segment.py --model yolo26x_seg --weights ./yolo26x-seg-iswsp.pt --source ./images --conf 0.25 --device 0 --output ./runs/segment/1x
+
+# 3) Inspect all 19-model bidirectional budgets & audit checkpoints (weights_only=True)
+python deploy_iswsp.py --model rfdetr_seg_2xl --list-budgets
+python deploy_iswsp.py --inspect-ckpt ./yolo26x-seg-iswsp.pt
+
+# 4) Verify Theorem 1 bilinear collapse, Two-Stage W_q, label-free stem whitening & 0-image repair
+python calibrate_iswsp.py --mode bilinear
+python calibrate_iswsp.py --mode full_wq
+python calibrate_iswsp.py --mode stem_whiten
+```
+
+
 ## Citation
 
 ```bibtex
 @article{wang2026odwsp,
   title={Reparameterizing Your Object Detectors for Weight Space Programming},
   author={Wang, Chien-Yao},
-  journal={arXiv preprint 2611.29882},
+  journal={arXiv preprint arXiv:2611.29882},
   year={2026}
+}
+
+@misc{wang2026iswsp,
+  title={Reparameterizing Your Instance Segmenter for Weight Space Programming},
+  author={Wang, Chien-Yao},
+  year={2026},
+  howpublished={\url{https://github.com/WongKinYiu/ODWSP}}
 }
 ```
 

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "odwsp"
-version = "0.1.0"
-description = "Reparameterizing Your Object Detectors for Weight Space Programming (IR-ODWSP)"
+version = "0.1.1"
+description = "Reparameterizing Your Object Detectors & Instance Segmenters for Weight Space Programming (IR-ODWSP & IR-ISWSP)"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
@@ -21,7 +21,8 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["odwsp*"]
+include = ["odwsp*", "iswsp*"]
 
 [tool.setuptools.package-data]
 odwsp = ["*.json"]
+iswsp = ["*.json"]
